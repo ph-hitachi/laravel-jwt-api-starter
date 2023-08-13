@@ -68,7 +68,7 @@ Use this endpoint to authenticate a user and generate an access token. Provide t
 
 ##### Request Body:
 ```http
-GET /api/login HTTP/1.1
+POST /api/login HTTP/1.1
 Host: localhost:8000
 Content-Type: application/json
 
@@ -105,6 +105,7 @@ Use this endpoint to fetch information about the currently authenticated user. I
 GET /api/me HTTP/1.1
 Host: localhost:8000
 Content-Type: application/json
+Authorization: Bearer <token>
 ```
 
 ##### Response:
@@ -124,7 +125,7 @@ Use this endpoint to refresh an expired access token. Include the current access
 
 ##### Request Body:
 ```http
-GET /api/refresh HTTP/1.1
+POST /api/refresh HTTP/1.1
 Host: localhost:8000
 Content-Type: application/json
 Authorization: Bearer <token>
@@ -154,9 +155,10 @@ Use this endpoint to invalidate the current access token and log out the user. I
 
 ##### Request Body:
 ```http
-GET /api/logout HTTP/1.1
+POST /api/logout HTTP/1.1
 Host: localhost:8000
 Content-Type: application/json
+Authorization: Bearer <token>
 ```
 
 ##### Response:
