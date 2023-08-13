@@ -7,59 +7,235 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+## Laravel 10 REST API Authentication with JWT
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+This project is a starter template for building a Laravel 10 REST API with JWT (JSON Web Token) authentication. It provides endpoints for user login, retrieving user information, refreshing tokens, and logging out. The project is intended to serve as a boilerplate and has been uploaded to GitHub as a public repository.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Table of Contents
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- [Installation](#installation)
+- [Endpoints](#endpoints)
+- [Error Handling](#error-handling)
+- [Security](#security)
+- [License](#license)
 
-## Learning Laravel
+## Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/ph-hitachi/laravel-api-jwt-starter.git
+    ```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+2. Navigate to the project directory:
+    ```bash
+    cd laravel-api-jwt-starter
+    ```
+3. Install the required dependencies using Composer::
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+   ```bash
+   composer install
+    ```
+4. Set up your environment variables by copying the `.env.example` file:
+   ```bash
+   cp .env.example .env
+    ```
 
-## Laravel Sponsors
+5. Generate a new application key:
+    ```bash
+    php artisan key:generate
+    ```
+6. Configure your database connection in the `.env` file.
+7. Run the migrations:
+    ```bash
+    php artisan migrate
+    ```
+8. Generate a JWT secret key:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+   ```bash
+   php artisan jwt:secret
+    ```
+## Endpoints
 
-### Premium Partners
+| Method   |      Endpoint      |  Description                             |
+|----------|--------------------|------------------------------------------|
+| POST     | /api/login         | User login and token generation          |
+| GET      | /api/me            | Get current user information             |
+| POST     | /api/refresh       | Refresh access token                     |
+| POST     | /api/logout	    | Invalidate the current token and log out |
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+#### User Login
+Use this endpoint to authenticate a user and generate an access token. Provide the user's email and password in the request body. If the credentials are valid, the API will respond with the user's information along with an access token that can be used for subsequent requests.
 
-## Contributing
+##### Request Body:
+```http
+GET /api/login HTTP/1.1
+Host: localhost:8000
+Content-Type: application/json
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+{
+    "email": "johndoe@example.com",
+    "password": "password@123"
+}
+```
 
-## Code of Conduct
+##### Response:
+```json
+{
+    "user": {
+        "id": 1,
+        "name": "john doe",
+        "email": "johndoe@example.com",
+        "email_verified_at": null,
+        "created_at": "2023-07-24T05:10:20.000000Z",
+        "updated_at": "2023-07-24T05:10:20.000000Z"
+    },
+    "authorization": {
+        "access_token": "{{ token }}",
+        "token_type": "bearer",
+        "expires_in": 3600
+    }
+}
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+#### Get Current Authenticated User Information
+Use this endpoint to fetch information about the currently authenticated user. Include the access token in the request headers. The API will respond with the user's details.
 
-## Security Vulnerabilities
+##### Request Body:
+```http
+GET /api/me HTTP/1.1
+Host: localhost:8000
+Content-Type: application/json
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+##### Response:
+```json
+{
+    "id": 1,
+    "name": "john doe",
+    "email": "johndoe@example.com",
+    "email_verified_at": null,
+    "created_at": "2023-07-24T05:10:20.000000Z",
+    "updated_at": "2023-07-24T05:10:20.000000Z"
+}
+```
+
+#### Generate Refresh token
+Use this endpoint to refresh an expired access token. Include the current access token in the request headers. The API will respond with a new access token that can be used for authentication. Token refresh is useful to maintain a user's session without requiring frequent logins.
+
+##### Request Body:
+```http
+GET /api/refresh HTTP/1.1
+Host: localhost:8000
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+##### Response:
+```json
+{
+    "user": {
+        "id": 1,
+        "name": "john doe",
+        "email": "johndoe@example.com",
+        "email_verified_at": null,
+        "created_at": "2023-07-24T05:10:20.000000Z",
+        "updated_at": "2023-07-24T05:10:20.000000Z"
+    },
+    "authorization": {
+        "access_token": "{{ token }}",
+        "token_type": "bearer",
+        "expires_in": 3600
+    }
+}
+```
+
+#### Logout
+Use this endpoint to invalidate the current access token and log out the user. Include the access token in the request headers. After logging out, the token will no longer be valid for making authenticated requests.
+
+##### Request Body:
+```http
+GET /api/logout HTTP/1.1
+Host: localhost:8000
+Content-Type: application/json
+```
+
+##### Response:
+```json
+{
+    "success": true
+}
+```
+
+## Error Handling
+
+In case of errors, the API will return responses in JSON format. The following table lists the fields you might encounter in error responses along with their descriptions:
+
+| Field            | Description                                      |
+| ---------------- | ------------------------------------------------ |
+| error            | The top-level container for error information    |
+| error.message    | A human-readable description of the error        |
+| error.type       | A categorization of the error type              |
+| error.code       | A specific code or identifier for the error     |
+| error.trace_id   | A unique identifier for tracing the error        |
+| error.validation | An object containing field-specific errors      |
+
+### Field Descriptions
+
+- **error.message**: This field provides a human-readable description of the error that occurred. It can help you identify the nature of the problem quickly.
+
+- **error.type**: This field categorizes the type of error that occurred. It can be helpful for programmatically handling different types of errors, such as authentication, validation, or server errors.
+
+- **error.code**: An error-specific code or identifier that can be used for easier identification and handling of errors in your codebase.
+
+- **error.trace_id**: A unique identifier associated with the error. This trace ID can be helpful for diagnosing issues and troubleshooting, as it can be used to locate relevant logs and traces.
+
+- **error.validation**: If the error is related to input validation, this object may contain detailed information about which fields failed validation and why. It helps pinpoint the exact issues with the submitted data.
+
+It's important to parse and handle these error responses appropriately in your application to provide meaningful feedback to users and to aid in debugging and improving the system.
+
+Here's an example of an error response:
+
+```json
+{
+    "error": {
+        "message": "The provided token is invalid, has expired, or has been blacklisted.",
+        "type": "OAuthException",
+        "code": "token_could_not_verified",
+        "trace_id": "qOoyG0cl3R8B4x9j"
+    }
+}
+```
+
+**Remember** that the specific field names and structures of error responses might vary based on the API implementation.
+
+```
+Feel free to adjust the descriptions and add any other relevant information to suit your project's requirements.
+```
+
+## Security
+
+### JWT Security Mechanisms
+
+JSON Web Tokens (JWTs) are a secure way to authenticate users in stateless environments. Here's how the security is maintained:
+
+- **Token Expiration**: JWT tokens have an expiration time (expiry). After a token expires, it's no longer valid for authentication. This ensures that if a token is intercepted, it can only be used for a limited time.
+
+- **Token Refresh**: When an access token expires, the user can use the refresh token to obtain a new access token without having to re-enter their credentials. The refresh token is typically long-lived and is used to generate new access tokens.
+
+- **Token Blacklisting**: While expired tokens can't be used for authentication, they can be blacklisted to ensure that even if an attacker gets hold of a valid token, it won't work after being blacklisted. Laravel has a built-in blacklist mechanism for this purpose.
+
+- **Statelessness**: JWTs are self-contained and do not require server-side storage. This makes JWT-based authentication suitable for scalable and distributed systems.
+
+### Handling Expired Tokens and Refreshing
+
+When an access token expires, the user can use the refresh token to request a new access token. This is done by making a request to the `/api/refresh` endpoint, providing the expired token in the authorization header. The API then responds with a new access token, extending the user's session.
+
+### Blacklisting Tokens
+
+If a token is compromised or a user logs out, their tokens can be blacklisted. Blacklisting means that even if an expired token is used for refresh, the new access token won't be generated. Laravel's built-in mechanism takes care of blacklisting tokens to enhance security.
+
+It's important to implement proper token handling and security practices to protect user data and maintain system integrity.
+
 
 ## License
 
