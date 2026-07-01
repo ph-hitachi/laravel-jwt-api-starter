@@ -1,6 +1,6 @@
 # API Overview
 
-Welcome to the Laravel JWT API Starter documentation.
+Welcome to the Laravel JWT API Starter API documentation.
 
 ## 1. Endpoints Summary
 
@@ -19,6 +19,7 @@ Welcome to the Laravel JWT API Starter documentation.
 |---|---|---|---|
 | PATCH | `/api/user/avatar` | `200 OK` | Upload an avatar file to update the profile. |
 | GET | `/api/user/me` | `200 OK` | Retrieve the authenticated user's profile details. |
+| PUT | `/api/user/password` | `200 OK` | Change the authenticated user's password after validating the current password. |
 | PUT | `/api/user/profile` | `200 OK` | Update the authenticated user's profile information (name and email). |
 | PATCH | `/api/user/settings` | `200 OK` | Update user-specific settings such as location sharing, nearby, etc. |
 | GET | `/api/user/username` | `200 OK` | Check if a username is valid and available (not taken by another user). |
@@ -126,7 +127,7 @@ When a domain exception is thrown, the API returns a structured JSON response:
 
 ## 4. Rate Limiting & Security Policies
 
-The Laravel JWT API Starter is built with high security standards. Every response includes strict security headers and global rate limits to protect both customer data and system integrity.
+The Laravel JWT API Starter API is built with high security standards. Every response includes strict security headers and global rate limits to protect both customer data and system integrity.
 
 ### API Rate Limiting & Authentication
 
@@ -151,11 +152,10 @@ Response headers included on every request to track your limit:
 | `X-XSS-Protection` | `1; mode=block` | Enable strict cross-site scripting (XSS) filtering |
 | `Referrer-Policy` | `no-referrer` | Ensure no referrer information is leaked to third parties |
 | `Content-Security-Policy` | `default-src 'none'; script-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';` | Advanced Content Security Policy for API (block all active content, framing, and explicitly prevent SVG/XSS script execution) |
-| `Cache-Control` | `no-store, max-age=0, must-revalidate` | Dynamic Cache-Control to prevent caching of sensitive data (Web Deception Protection) |
 
 ### CORS Configuration
 
-The Laravel JWT API Starter implements Cross-Origin Resource Sharing (CORS) policies to control which external domains are allowed to access resources.
+The Laravel JWT API Starter API implements Cross-Origin Resource Sharing (CORS) policies to control which external domains are allowed to access resources.
 
 The current CORS configuration is dynamically parsed below:
 

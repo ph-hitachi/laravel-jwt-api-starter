@@ -33,7 +33,7 @@ Route::middleware(['auth:api', 'active'])->group(function () {
         Route::patch('/avatar',                 [UserProfileController::class, 'updateAvatar']);
         Route::patch('/settings',               [UserProfileController::class, 'updateSettings']);
         Route::get('/username',                 [UserProfileController::class, 'checkUsername']);
-        // Route::put('/password',                 [UserProfileController::class, 'updatePassword']);
+        Route::put('/password',                 [UserProfileController::class, 'updatePassword']);
     });
 
     // ── Admin ─────────────────────────────────────────────────────────────

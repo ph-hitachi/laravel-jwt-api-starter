@@ -129,26 +129,26 @@ class ProfileController extends Controller
         ]);
     }
 
-    // /**
-    //  * Update password.
-    //  *
-    //  * Change the authenticated user's password after validating the current password.
-    //  *
-    //  * @param UpdatePasswordRequest $request
-    //  *
-    //  * @see \App\Policies\UserPolicy::update()
-    //  * @response UserResource
-    //  */
-    // public function updatePassword(UpdatePasswordRequest $request): UserResource
-    // {
-    //     $user = $request->user();
-    // 
-    //     $this->authorize('update', $user);
-    // 
-    //     $user->update([
-    //         'password' => $request->validated('password')
-    //     ]);
-    // 
-    //     return new UserResource($user);
-    // }
+    /**
+     * Update password.
+     *
+     * Change the authenticated user's password after validating the current password.
+     *
+     * @param UpdatePasswordRequest $request
+     *
+     * @see \App\Policies\UserPolicy::update()
+     * @response UserResource
+     */
+    public function updatePassword(UpdatePasswordRequest $request): UserResource
+    {
+        $user = $request->user();
+
+        $this->authorize('update', $user);
+
+        $user->update([
+            'password' => $request->validated('password')
+        ]);
+
+        return new UserResource($user);
+    }
 }

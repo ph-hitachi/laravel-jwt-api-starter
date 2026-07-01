@@ -36,6 +36,7 @@ This boilerplate is designed with performance, security, and developer experienc
 | `PATCH` | `/api/user/avatar` | Upload an avatar file to update the profile. |
 | `PATCH` | `/api/user/settings` | Update user-specific settings. |
 | `GET` | `/api/user/username` | Check if a username is valid and available. |
+| `PUT` | `/api/user/password` | Update the authenticated user's password. |
 
 ### Admin/Users
 
