@@ -1,6 +1,6 @@
 # API Overview
 
-Welcome to the Marketplace API documentation.
+Welcome to the Laravel JWT API Starter documentation.
 
 ## 1. Endpoints Summary
 
@@ -126,7 +126,7 @@ When a domain exception is thrown, the API returns a structured JSON response:
 
 ## 4. Rate Limiting & Security Policies
 
-The Marketplace API is built with high security standards. Every response includes strict security headers and global rate limits to protect both customer data and system integrity.
+The Laravel JWT API Starter is built with high security standards. Every response includes strict security headers and global rate limits to protect both customer data and system integrity.
 
 ### API Rate Limiting & Authentication
 
@@ -155,7 +155,7 @@ Response headers included on every request to track your limit:
 
 ### CORS Configuration
 
-The Marketplace API implements Cross-Origin Resource Sharing (CORS) policies to control which external domains are allowed to access resources.
+The Laravel JWT API Starter implements Cross-Origin Resource Sharing (CORS) policies to control which external domains are allowed to access resources.
 
 The current CORS configuration is dynamically parsed below:
 

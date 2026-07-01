@@ -22,7 +22,7 @@ class GenerateOverview extends Command
         $generator = app(\Dedoc\Scramble\Generator::class);
         $openapi = $generator();
 
-        $appName = config('app.name', 'Marketplace API');
+        $appName = config('app.name', 'Laravel JWT API Starter');
         if (!str_ends_with(strtolower($appName), 'api')) {
             $appName .= ' API';
         }
@@ -125,11 +125,11 @@ class GenerateOverview extends Command
         foreach ($files as $index => $file) {
             $path = $dir . DIRECTORY_SEPARATOR . $file;
             $isLast = ($index === $count - 1);
-            $connector = $isLast ? '└── ' : '├── ';
+            $connector = $isLast ? 'â””â”€â”€ ' : 'â”œâ”€â”€ ';
 
             if (is_dir($path)) {
                 $result .= $prefix . $connector . $file . "/\n";
-                $newPrefix = $prefix . ($isLast ? '    ' : '│   ');
+                $newPrefix = $prefix . ($isLast ? '    ' : 'â”‚   ');
                 $result .= $this->generateTree($path, $newPrefix, []);
             } else {
                 $result .= $prefix . $connector . $file . "\n";
@@ -559,7 +559,7 @@ class GenerateOverview extends Command
         $credentials = ($cors['supports_credentials'] ?? false) ? 'true' : 'false';
         $maxAge = $cors['max_age'] ?? 0;
 
-        $appName = config('app.name', 'Marketplace API');
+        $appName = config('app.name', 'Laravel JWT API Starter');
         if (!str_ends_with(strtolower($appName), 'api')) {
             $appName .= ' API';
         }

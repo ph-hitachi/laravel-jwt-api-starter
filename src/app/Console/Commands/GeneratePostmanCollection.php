@@ -37,7 +37,7 @@ class GeneratePostmanCollection extends Command
 
         $collection = [
             'info' => [
-                'name' => ($openapi['info']['title'] ?? 'Marketplace API') . ' (Auto-Generated)',
+                'name' => ($openapi['info']['title'] ?? 'Laravel JWT API Starter') . ' (Auto-Generated)',
                 'schema' => 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
             ],
             'item' => [],
