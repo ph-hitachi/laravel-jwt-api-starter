@@ -9,6 +9,8 @@ services:
     container_name: app
     restart: unless-stopped
     working_dir: /var/www/html
+    env_file:
+      - ./src/.env.docker.example
     volumes:
       - ./src:/var/www/html
       - ./docs:/var/www/html/docs
