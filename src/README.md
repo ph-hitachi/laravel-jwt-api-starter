@@ -60,7 +60,12 @@ Every response includes strict security headers:
 - `X-XSS-Protection: 1; mode=block`
 - `Referrer-Policy: no-referrer`
 - `Content-Security-Policy: default-src 'none'; script-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';`
-- `Cache-Control: no-store, max-age=0, must-revalidate`
+
+### ⚡ ETag Caching
+The API implements ETag-based caching (using HTTP conditional requests) for optimized client performance and reduced server bandwidth:
+- **ETag Generation**: Every response includes an `ETag` header representing the hash of the payload.
+- **Conditional Requests**: Clients send the ETag value in the `If-None-Match` header on subsequent requests.
+- **304 Not Modified**: If the resource hasn't changed, the server responds with a `304 Not Modified` status code and an empty body, indicating the client should use its cached copy.
 
 ### JWT Security Mechanisms
 - **Token Expiration**: JWT tokens have an expiration time.
