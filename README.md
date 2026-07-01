@@ -21,6 +21,21 @@ docker compose up -d --build
 ```
 *(On first start, wait a few moments for the database to boot and compile).*
 
+#### Verify Containers are Running
+Run `docker ps` to ensure all four containers (`web`, `app`, `redis`, `db`) are active:
+```bash
+docker ps
+```
+
+Example Output:
+```text
+CONTAINER ID   IMAGE                 COMMAND                  CREATED        STATUS         PORTS                                         NAMES
+9b59906fe1be   nginx:stable-alpine   "/docker-entrypoint.…"   37 hours ago   Up X minutes   0.0.0.0:80->80/tcp, [::]:80->80/tcp           web
+0cc86a0e698e   app:latest            "/usr/local/bin/dock…"   37 hours ago   Up X minutes   9000/tcp                                      app
+20fea63458ef   redis:alpine          "docker-entrypoint.s…"   37 hours ago   Up X minutes   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp   redis
+8cee392e47de   mysql:8.0             "docker-entrypoint.s…"   37 hours ago   Up X minutes   0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp   db
+```
+
 ### Step 3: Configure Laravel Application Keys
 Create the local Laravel `.env` configuration file and generate the application key and JWT secret:
 ```bash
