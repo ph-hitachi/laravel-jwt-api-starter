@@ -17,25 +17,34 @@ This boilerplate is designed with performance, security, and developer experienc
 ## 🛣️ Endpoints Summary
 
 ### Authentication
-- `POST /api/auth/authenticate` — Authenticate a user using social oauth provider and token.
-- `POST /api/auth/logout` — Revoke the user's current JWT access token and log them out.
-- `POST /api/auth/refresh` — Refresh the current authentication token.
-- `POST /api/auth/register` — Complete onboarding for the currently authenticated user.
+
+| Method | Endpoint | Description |
+|:---|:---|:---|
+| `POST` | `/api/auth/authenticate` | Authenticate a user using social OAuth provider and token. |
+| `POST` | `/api/auth/logout` | Revoke the user's current JWT access token and log them out. |
+| `POST` | `/api/auth/refresh` | Refresh the current authentication token. |
+| `POST` | `/api/auth/register` | Complete onboarding for the currently authenticated user. |
 
 ### User/Profile
-- `GET /api/user/me` — Retrieve the authenticated user's profile details.
-- `PUT /api/user/profile` — Update the authenticated user's profile information.
-- `PATCH /api/user/avatar` — Upload an avatar file to update the profile.
-- `PATCH /api/user/settings` — Update user-specific settings.
-- `GET /api/user/username` — Check if a username is valid and available.
+
+| Method | Endpoint | Description |
+|:---|:---|:---|
+| `GET` | `/api/user/me` | Retrieve the authenticated user's profile details. |
+| `PUT` | `/api/user/profile` | Update the authenticated user's profile information. |
+| `PATCH` | `/api/user/avatar` | Upload an avatar file to update the profile. |
+| `PATCH` | `/api/user/settings` | Update user-specific settings. |
+| `GET` | `/api/user/username` | Check if a username is valid and available. |
 
 ### Admin/Users
-- `GET /api/admin/users` — List all registered users with pagination.
-- `GET /api/admin/users/{user}` — Retrieve detailed profile information.
-- `DELETE /api/admin/users/{user}` — Permanently delete a user account.
-- `PATCH /api/admin/users/{user}/activate` — Reactivate a deactivated user account.
-- `PATCH /api/admin/users/{user}/deactivate` — Deactivate a user account.
-- `PATCH /api/admin/users/{user}/role` — Assign a new system role to a user account.
+
+| Method | Endpoint | Description |
+|:---|:---|:---|
+| `GET` | `/api/admin/users` | List all registered users with pagination. |
+| `GET` | `/api/admin/users/{user}` | Retrieve detailed profile information of a specific user. |
+| `DELETE` | `/api/admin/users/{user}` | Permanently delete a user account. |
+| `PATCH` | `/api/admin/users/{user}/activate` | Reactivate a deactivated user account. |
+| `PATCH` | `/api/admin/users/{user}/deactivate` | Deactivate a user account. |
+| `PATCH` | `/api/admin/users/{user}/role` | Assign a new system role to a user account. |
 
 ---
 
