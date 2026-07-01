@@ -21,6 +21,12 @@ class JwtTokenTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // 1. Token Expiration
     // ─────────────────────────────────────────────────────────────────────

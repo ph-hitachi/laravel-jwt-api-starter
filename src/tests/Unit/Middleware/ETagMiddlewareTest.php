@@ -10,6 +10,7 @@ class ETagMiddlewareTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
 
         // Register dummy routes for testing the middleware
         Route::get('/api/test-etag-get', function () {

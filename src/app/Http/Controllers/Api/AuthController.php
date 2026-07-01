@@ -72,7 +72,6 @@ class AuthController extends Controller
                 'avatar_url' => $avatar,
                 'google_id' => $googleId,
                 'facebook_id' => $facebookId,
-                'is_onboarding_completed' => false,
                 'is_active' => true,
             ]);
         } else {

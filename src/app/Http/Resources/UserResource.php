@@ -33,7 +33,6 @@ class UserResource extends JsonResource
             'avatar' => $this->avatar_url,
             'google_id' => $this->when($allowed, $this->google_id),
             'facebook_id' => $this->when($allowed, $this->facebook_id),
-            'is_onboarding_completed' => $this->is_onboarding_completed,
             'phone_number' => $this->phone_number,
             'phone_iso_code' => $this->phone_iso_code,
             'phone_dial_code' => $this->phone_dial_code,

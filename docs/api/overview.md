@@ -110,7 +110,6 @@ In addition to the standard HTTP errors, the API throws custom business logic ex
 | `AccountDeactivatedException` | `403` | `ACCOUNT_DEACTIVATED` | Attempting to login or perform actions with a deactivated account. |
 | `InvalidCredentialsException` | `401` | `INVALID_CREDENTIALS` | Providing an incorrect password during login. |
 | `OauthException` | `400` | `OAUTH_FAILED` | OAuth authentication token validation failed. |
-| `OnboardingCompletedException` | `409` | `ONBOARDING_ALREADY_COMPLETED` | User has already completed onboarding. |
 
 ### Domain Error JSON Format
 

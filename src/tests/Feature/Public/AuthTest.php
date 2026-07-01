@@ -3,8 +3,6 @@
 namespace Tests\Feature\Public;
 
 use App\Models\User;
-use App\Models\Place;
-use App\Models\UserSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Facades\Socialite;
 use Tests\TestCase;
@@ -12,6 +10,12 @@ use Tests\TestCase;
 class AuthTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+    }
 
     protected function mockSocialite($providerName = 'google', $email = 'testuser@example.com')
     {
@@ -39,7 +43,7 @@ class AuthTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'user' => ['id', 'name', 'email', 'role', 'is_onboarding_completed'],
+                'user' => ['id', 'name', 'email', 'role'],
                 'authorization' => [
                     'access_token',
                     'token_type',
@@ -50,7 +54,6 @@ class AuthTest extends TestCase
         $this->assertDatabaseHas('users', [
             'email' => 'newuser@example.com',
             'google_id' => '123456789',
-            'is_onboarding_completed' => false,
         ]);
     }
 
@@ -102,33 +105,18 @@ class AuthTest extends TestCase
             ]);
     }
 
-    public function test_onboarding_register_success(): void
+    public function test_register_success(): void
     {
-        $user = User::factory()->create([
-            'is_onboarding_completed' => false,
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'John Doe',
+            'email' => 'johndoe@example.com',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ]);
-
-        $token = auth('api')->login($user);
-
-        $response = $this->withHeader('Authorization', "Bearer {$token}")
-            ->postJson('/api/auth/register', [
-                'username' => 'valid_username',
-                'home' => [
-                    'place_name' => 'My Home',
-                    'address' => '123 Main St',
-                    'lat' => 14.5995,
-                    'lng' => 120.9842,
-                    'radius' => 150,
-                ],
-                'safety_preference' => [
-                    'sound_recording' => true,
-                    'silent_mode' => false,
-                ]
-            ]);
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'user' => ['id', 'username', 'is_onboarding_completed'],
+                'user' => ['id', 'name', 'email', 'role'],
                 'authorization' => [
                     'access_token',
                     'token_type',
@@ -136,224 +124,61 @@ class AuthTest extends TestCase
                 ],
             ]);
 
-        $user->refresh();
-        $this->assertTrue($user->is_onboarding_completed);
-        $this->assertEquals('valid_username', $user->username);
-
-        $this->assertDatabaseHas('places', [
-            'user_id' => $user->id,
-            'name' => 'My Home',
-            'latitude' => 14.5995,
-            'longitude' => 120.9842,
-        ]);
-
-        $this->assertDatabaseHas('user_settings', [
-            'user_id' => $user->id,
-            'key' => 'sound_recording',
-            'value' => 'true',
+        $this->assertDatabaseHas('users', [
+            'email' => 'johndoe@example.com',
+            'name' => 'John Doe',
         ]);
     }
 
-    public function test_onboarding_register_conflict_if_already_completed(): void
+    public function test_register_validation_failures(): void
     {
-        $user = User::factory()->create([
-            'is_onboarding_completed' => true,
-        ]);
-
-        $token = auth('api')->login($user);
-
-        $response = $this->withHeader('Authorization', "Bearer {$token}")
-            ->postJson('/api/auth/register', [
-                'username' => 'new_username',
-                'home' => [
-                    'place_name' => 'My Home',
-                    'address' => '123 Main St',
-                    'lat' => 14.5995,
-                    'lng' => 120.9842,
-                    'radius' => 150,
-                ],
-                'safety_preference' => [
-                    'sound_recording' => true,
-                    'silent_mode' => false,
-                ]
-            ]);
-
-        $response->assertStatus(409)
-            ->assertJson([
-                'error_code' => 'ONBOARDING_ALREADY_COMPLETED',
-            ]);
-    }
-
-    public function test_onboarding_register_validation_failures(): void
-    {
-        $user = User::factory()->create([
-            'is_onboarding_completed' => false,
-        ]);
-
-        $token = auth('api')->login($user);
-
-        $response = $this->withHeader('Authorization', "Bearer {$token}")
-            ->postJson('/api/auth/register', []);
+        $response = $this->postJson('/api/auth/register', []);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors([
-                'username',
-                'home.place_name',
-                'home.address',
-                'home.lat',
-                'home.lng',
-                'safety_preference.sound_recording',
-                'safety_preference.silent_mode',
+                'name',
+                'email',
+                'password',
             ]);
     }
 
-    public function test_onboarding_register_username_validation_failures(): void
+    public function test_login_success(): void
     {
         $user = User::factory()->create([
-            'is_onboarding_completed' => false,
+            'password' => 'password123',
         ]);
-        $token = auth('api')->login($user);
 
-        // 1. Username too short (min:3)
-        $response = $this->withHeader('Authorization', "Bearer {$token}")
-            ->postJson('/api/auth/register', [
-                'username' => 'ab',
-                'home' => [
-                    'place_name' => 'Home',
-                    'address' => '123 Main St',
-                    'lat' => 12.34,
-                    'lng' => 56.78,
+        $response = $this->postJson('/api/auth/login', [
+            'email' => $user->email,
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'user' => ['id', 'name', 'email', 'role'],
+                'authorization' => [
+                    'access_token',
+                    'token_type',
+                    'expires_in',
                 ],
-                'safety_preference' => [
-                    'sound_recording' => true,
-                    'silent_mode' => false,
-                ]
             ]);
-        $response->assertStatus(422)->assertJsonValidationErrors(['username']);
-
-        // 2. Username invalid character format (uppercase or symbols)
-        $response = $this->withHeader('Authorization', "Bearer {$token}")
-            ->postJson('/api/auth/register', [
-                'username' => 'Invalid_User!',
-                'home' => [
-                    'place_name' => 'Home',
-                    'address' => '123 Main St',
-                    'lat' => 12.34,
-                    'lng' => 56.78,
-                ],
-                'safety_preference' => [
-                    'sound_recording' => true,
-                    'silent_mode' => false,
-                ]
-            ]);
-        $response->assertStatus(422)->assertJsonValidationErrors(['username']);
-
-        // 3. Username already taken by another user
-        User::factory()->create(['username' => 'taken_username']);
-
-        $response = $this->withHeader('Authorization', "Bearer {$token}")
-            ->postJson('/api/auth/register', [
-                'username' => 'taken_username',
-                'home' => [
-                    'place_name' => 'Home',
-                    'address' => '123 Main St',
-                    'lat' => 12.34,
-                    'lng' => 56.78,
-                ],
-                'safety_preference' => [
-                    'sound_recording' => true,
-                    'silent_mode' => false,
-                ]
-            ]);
-        $response->assertStatus(422)->assertJsonValidationErrors(['username']);
     }
 
-    public function test_onboarding_register_home_coordinates_validation_failures(): void
+    public function test_login_invalid_credentials_failure(): void
     {
         $user = User::factory()->create([
-            'is_onboarding_completed' => false,
+            'password' => 'password123',
         ]);
-        $token = auth('api')->login($user);
 
-        // 1. Latitude out of range (> 90 or < -90)
-        $response = $this->withHeader('Authorization', "Bearer {$token}")
-            ->postJson('/api/auth/register', [
-                'username' => 'valid_username',
-                'home' => [
-                    'place_name' => 'Home',
-                    'address' => '123 Main St',
-                    'lat' => 95.0,
-                    'lng' => 56.78,
-                ],
-                'safety_preference' => [
-                    'sound_recording' => true,
-                    'silent_mode' => false,
-                ]
-            ]);
-        $response->assertStatus(422)->assertJsonValidationErrors(['home.lat']);
-
-        // 2. Longitude out of range (> 180 or < -180)
-        $response = $this->withHeader('Authorization', "Bearer {$token}")
-            ->postJson('/api/auth/register', [
-                'username' => 'valid_username',
-                'home' => [
-                    'place_name' => 'Home',
-                    'address' => '123 Main St',
-                    'lat' => 12.34,
-                    'lng' => -185.0,
-                ],
-                'safety_preference' => [
-                    'sound_recording' => true,
-                    'silent_mode' => false,
-                ]
-            ]);
-        $response->assertStatus(422)->assertJsonValidationErrors(['home.lng']);
-
-        // 3. Radius too small (< 10)
-        $response = $this->withHeader('Authorization', "Bearer {$token}")
-            ->postJson('/api/auth/register', [
-                'username' => 'valid_username',
-                'home' => [
-                    'place_name' => 'Home',
-                    'address' => '123 Main St',
-                    'lat' => 12.34,
-                    'lng' => 56.78,
-                    'radius' => 5,
-                ],
-                'safety_preference' => [
-                    'sound_recording' => true,
-                    'silent_mode' => false,
-                ]
-            ]);
-        $response->assertStatus(422)->assertJsonValidationErrors(['home.radius']);
-    }
-
-    public function test_onboarding_register_safety_preferences_validation_failures(): void
-    {
-        $user = User::factory()->create([
-            'is_onboarding_completed' => false,
+        $response = $this->postJson('/api/auth/login', [
+            'email' => $user->email,
+            'password' => 'wrongpassword',
         ]);
-        $token = auth('api')->login($user);
 
-        // 1. Safety preferences not boolean
-        $response = $this->withHeader('Authorization', "Bearer {$token}")
-            ->postJson('/api/auth/register', [
-                'username' => 'valid_username',
-                'home' => [
-                    'place_name' => 'Home',
-                    'address' => '123 Main St',
-                    'lat' => 12.34,
-                    'lng' => 56.78,
-                ],
-                'safety_preference' => [
-                    'sound_recording' => 'not-a-boolean',
-                    'silent_mode' => 12345,
-                ]
+        $response->assertStatus(401)
+            ->assertJson([
+                'error_code' => 'INVALID_CREDENTIALS',
             ]);
-        $response->assertStatus(422)->assertJsonValidationErrors([
-            'safety_preference.sound_recording',
-            'safety_preference.silent_mode'
-        ]);
     }
 
     public function test_logout_success(): void

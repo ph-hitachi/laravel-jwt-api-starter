@@ -2,21 +2,6 @@
 // Render at: https://dbdiagram.io
 // Copy & paste the entire content below into the editor
 
-Table places {
-  id                 bigint        [pk, increment, not null]
-  user_id            bigint        [not null, ref: > users.id]
-  name               varchar(255)  [not null]
-  latitude           decimal(14,2) [not null]
-  longitude          decimal(14,2) [not null]
-  radius             int           [not null, default: 150]
-  icon               varchar(255)  [not null, default: "house"]
-  address            varchar(255)  [null]
-  geofence_type      varchar(255)  [null]
-  geofence_vertices  text          [null]
-  created_at         timestamp     [null]
-  updated_at         timestamp     [null]
-}
-
 Table user_settings {
   id                 bigint        [pk, increment, not null]
   user_id            bigint        [not null, ref: > users.id]
@@ -38,7 +23,6 @@ Table users {
   avatar_url         varchar(255)  [null]
   google_id          bigint        [unique, null]
   facebook_id        bigint        [unique, null]
-  is_onboarding_completed boolean       [not null, default: false]
   email_verified_at  timestamp     [null]
   password           varchar(255)  [null]
   phone_number       varchar(255)  [null]

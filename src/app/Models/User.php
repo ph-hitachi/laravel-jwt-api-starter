@@ -12,7 +12,7 @@ use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
 use App\Support\Cacheable;
 
-#[Fillable(['name', 'username', 'email', 'avatar_url', 'google_id', 'facebook_id', 'is_onboarding_completed', 'phone_number', 'phone_iso_code', 'phone_dial_code', 'password', 'role', 'is_active'])]
+#[Fillable(['name', 'username', 'email', 'avatar_url', 'google_id', 'facebook_id', 'phone_number', 'phone_iso_code', 'phone_dial_code', 'password', 'role', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 /**
  * @mixin \App\Support\CacheBuilder
@@ -53,13 +53,7 @@ class User extends Authenticatable implements JWTSubject
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
-            'is_onboarding_completed' => 'boolean',
         ];
-    }
-
-    public function places()
-    {
-        return $this->hasMany(Place::class);
     }
 
     public function settings()
