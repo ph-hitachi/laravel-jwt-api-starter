@@ -92,22 +92,48 @@ The API uses a standardized error format for all exceptions:
 
 ## 🛠️ Installation & Quick Start
 
-### Step 1: Install & Configure
+Follow these steps to set up and run the application locally on your machine.
+
+### Step 1: Clone and Install Dependencies
+Navigate into the `src` directory and install the required packages:
 ```bash
+# Install PHP dependencies
 composer install
+
+# Install and build frontend assets (required for Scramble API Docs rendering)
+npm install
+npm run build
+```
+
+### Step 2: Configure Environment Variables
+Copy the template environment file to create your local configuration:
+```bash
 cp .env.example .env
+```
+
+### Step 3: Generate Application Keys
+Generate the standard Laravel application encryption key and the JWT authentication secret:
+```bash
+# Generate the application key
 php artisan key:generate
+
+# Generate the JWT secret key
 php artisan jwt:secret
 ```
 
-### Step 2: Database Setup
+### Step 4: Run Database Migrations
+Set up your database (default local setup uses SQLite, but you can configure MySQL/PostgreSQL in `.env` if desired):
 ```bash
+# For default SQLite usage, ensure the database file exists first
 touch database/database.sqlite
+
+# Run all migrations and seed the database with initial dummy data
 php artisan migrate:fresh --seed
 ```
 
-### Step 3: Serve
+### Step 5: Serve the Application
+Start the local Laravel development server:
 ```bash
 php artisan serve
 ```
-The API will now be accessible at `http://127.0.0.1:8000`.
+Once started, the API will be accessible locally at `http://127.0.0.1:8000`. You can test the endpoints or access the built-in API developer tools from there.

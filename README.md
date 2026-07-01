@@ -6,40 +6,67 @@ A boilerplate Laravel JWT-based API starter kit, pre-configured with a modern Do
 
 ## 🚀 Quick Start
 
-1. **Build and start the stack (from project root):**
-   ```bash
-   docker compose up -d --build
-   ```
-   *The PHP container installs Composer and will auto-install Laravel into `src` on the first container start if it is empty. Wait for logs to finish.*
+Follow these steps to initialize and start the Docker environment:
 
-2. **Copy `.env.docker` to `src/.env` (or edit `src/.env`) and run migrations:**
-   ```bash
-   docker compose exec app php artisan migrate
-   ```
+### Step 1: Set Up Docker Environment File
+Before starting the containers, create your Docker-specific environment configuration:
+```bash
+cp .env.docker.example .env.docker
+```
 
-3. **Access the application:**
-   Point your browser to `http://localhost`.
+### Step 2: Build and Start the Containers
+Run Docker Compose to build and launch the PHP-FPM, Nginx, MySQL, and Redis services:
+```bash
+docker compose up -d --build
+```
+*(On first start, wait a few moments for the database to boot and compile).*
+
+### Step 3: Configure Laravel Application Keys
+Create the local Laravel `.env` configuration file and generate the application key and JWT secret:
+```bash
+# 1. Copy the template .env file in the src directory
+cp src/.env.example src/.env
+
+# 2. Generate Laravel App Key inside the container
+docker compose exec app php artisan key:generate
+
+# 3. Generate JWT Secret Key inside the container
+docker compose exec app php artisan jwt:secret
+```
+
+### Step 4: Run Database Migrations
+Run the database migrations and seed the database with initial template records:
+```bash
+docker compose exec app php artisan migrate:fresh --seed
+```
+
+### Step 5: Verify the Setup
+Open your browser and navigate to `http://localhost`. The application is now fully configured and running!
 
 ---
 
 ## 🛠️ Running Artisan Commands
 
-Run standard Artisan commands directly in the running `app` container:
+Run any standard Artisan command inside the running `app` container using `docker compose exec`:
 - **Run migrations:**
   ```bash
   docker compose exec app php artisan migrate
   ```
-- **Run a one-off artisan command if the container is not running:**
+- **Run migrations with seed data:**
   ```bash
-  docker compose run --rm app php artisan migrate
+  docker compose exec app php artisan migrate:fresh --seed
   ```
-- **Open a shell inside the `app` container:**
+- **Run test suites:**
+  ```bash
+  docker compose exec app php artisan test
+  ```
+- **Access Tinker CLI:**
+  ```bash
+  docker compose exec app php artisan tinker
+  ```
+- **Open a shell inside the container:**
   ```bash
   docker compose exec app sh
-  ```
-- **Follow application logs:**
-  ```bash
-  docker compose logs -f app
   ```
 
 ---
