@@ -9,6 +9,8 @@ This boilerplate is designed with performance, security, and developer experienc
 ## 📌 Table of Contents
 - [Endpoints Summary](#-endpoints-summary)
 - [Rate Limiting & Security Policies](#-rate-limiting--security-policies)
+- [ETag Caching](#-etag-caching)
+- [JWT Security Mechanisms](#jwt-security-mechanisms)
 - [Standard Error Responses](#-standard-error-responses)
 - [Installation & Quick Start](#-installation--quick-start)
 
