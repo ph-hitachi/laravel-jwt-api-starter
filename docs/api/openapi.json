@@ -1,0 +1,2111 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Marketplace API",
+        "version": "0.0.1",
+        "description": "# API Overview\n\nWelcome to the Marketplace API documentation.\n\n## 1. Endpoints Summary\n\n### Authentication\n\n| Method | Endpoint | Success Status | Description |\n|---|---|---|---|\n| POST | `/api/auth/authenticate` | `200 OK` | Authenticate a user using social oauth provider and token. |\n| POST | `/api/auth/logout` | `204 No Content` | Revoke the user's current JWT access token and log them out of the application. |\n| POST | `/api/auth/refresh` | `200 OK` | Refresh the user's current authentication token, invalidating the old one and returning a new JWT. |\n| POST | `/api/auth/register` | `200 OK` | Complete onboarding for the currently authenticated user by adding username, home place, and safety preferences. |\n\n### User/Profile\n\n| Method | Endpoint | Success Status | Description |\n|---|---|---|---|\n| PATCH | `/api/user/avatar` | `200 OK` | Upload an avatar file to update the profile. |\n| GET | `/api/user/me` | `200 OK` | Retrieve the authenticated user's profile details. |\n| PUT | `/api/user/profile` | `200 OK` | Update the authenticated user's profile information (name and email). |\n| PATCH | `/api/user/settings` | `200 OK` | Update user-specific settings such as location sharing, nearby, etc. |\n| GET | `/api/user/username` | `200 OK` | Check if a username is valid and available (not taken by another user). |\n\n### Admin/Users\n\n| Method | Endpoint | Success Status | Description |\n|---|---|---|---|\n| GET | `/api/admin/users` | `200 OK` | List all registered users with pagination. |\n| GET | `/api/admin/users/{user}` | `200 OK` | Retrieve detailed profile information of a specific user. |\n| DELETE | `/api/admin/users/{user}` | `204 No Content` | Permanently delete a user account from the system database. |\n| PATCH | `/api/admin/users/{user}/activate` | `204 No Content` | Reactivate a deactivated user account, allowing them to login and access the platform. |\n| PATCH | `/api/admin/users/{user}/deactivate` | `204 No Content` | Deactivate a user account, revoking their active token and session immediately. |\n| PATCH | `/api/admin/users/{user}/role` | `204 No Content` | Assign a new system role (user, admin) to a user account. |\n\n---\n\n## 2. Standard HTTP Response Codes\n\nWhile domain-specific errors (`ServerErrorException`) have their own dedicated error codes, the API also relies heavily on standard HTTP status codes.\n\n### Success Responses\n\n| HTTP Status | Description |\n|---|---|\n| `200 OK` | The request succeeded. Used for `GET` (fetching records), `PUT`/`PATCH` (updating records), and standard actions. |\n| `201 Created` | The request succeeded and a new resource was created. Used exclusively for `POST` requests that result in database creation. |\n| `204 No Content` | The request succeeded, but there is no body to return. Used primarily for `DELETE` requests where the resource is successfully removed. |\n\n---\n\n## 3. Global Error Responses\n\nThe API uses a standardized error format for all exceptions. The `app.php` bootstrap configuration enforces the following global error codes:\n\n| Error Code | HTTP Status | Exception Type | Description |\n|---|---|---|---|\n| `TOKEN_COULD_NOT_PARSE` | `400 Bad Request` | `JWTException` | The token could not be parsed. |\n| `BAD_REQUEST` | `400 Bad Request` | `BadRequestHttpException` | The request could not be understood or was malformed. |\n| `TOKEN_BLACKLISTED` | `401 Unauthorized` | `TokenBlacklistedException` | The token has been blacklisted. |\n| `TOKEN_EXPIRED` | `401 Unauthorized` | `TokenExpiredException` | The token has expired. |\n| `TOKEN_INVALID` | `401 Unauthorized` | `TokenInvalidException` | The token is invalid. |\n| `UNAUTHENTICATED` | `401 Unauthorized` | `AuthenticationException` | You are not authenticated. Please provide a valid token. |\n| `FORBIDDEN` | `403 Forbidden` | `AuthorizationException` | You do not have permission to perform this action. |\n| `FORBIDDEN` | `403 Forbidden` | `AccessDeniedHttpException` | Attempting to perform an action without required permissions. |\n| `NOT_FOUND` | `404 Not Found` | `NotFoundHttpException` | Requesting an endpoint or database record that does not exist. |\n| `NOT_FOUND` | `404 Not Found` | `ModelNotFoundException` | The database record does not exist. |\n| `METHOD_NOT_ALLOWED` | `405 Method Not Allowed` | `MethodNotAllowedHttpException` | Invalid HTTP method. |\n| `VALIDATION_ERROR` | `422 Unprocessable Entity` | `ValidationException` | The given data was invalid. |\n| `TOO_MANY_REQUESTS` | `429 Too Many Requests` | `TooManyRequestsHttpException` | Too many requests. Please slow down and try again in a moment. |\n| `INTERNAL_ERROR` | `500 Internal Server Error` | `\\Throwable` | Sorry, something went wrong on the server. Please try again later. |\n\n\n### Global Error JSON Format\n\nWhen a global error occurs, the API returns a structured JSON response matching the domain exception format:\n\n```json\n{\n    \"error_code\": \"UNAUTHENTICATED\",\n    \"exception_type\": \"AuthenticationException\",\n    \"message\": \"Unauthenticated.\"\n}\n```\n\n### Example Error Response\n\n```json\n{\n    \"error_code\": \"VALIDATION_ERROR\",\n    \"message\": \"The given data was invalid.\",\n    \"errors\": {\n        \"payment_method\": [\n            \"The selected payment method is invalid.\"\n        ]\n    }\n}\n```\n\n### Domain-Specific Error Codes\n\nIn addition to the standard HTTP errors, the API throws custom business logic exceptions. These return a consistent JSON payload containing the specific `error_code` and a human-readable `message`.\n\n| Exception Class | HTTP Status | Error Code (`error_code`) | Typical Cause |\n|---|---|---|---|\n| `AccountDeactivatedException` | `403` | `ACCOUNT_DEACTIVATED` | Attempting to login or perform actions with a deactivated account. |\n| `InvalidCredentialsException` | `401` | `INVALID_CREDENTIALS` | Providing an incorrect password during login. |\n| `OauthException` | `400` | `OAUTH_FAILED` | OAuth authentication token validation failed. |\n| `OnboardingCompletedException` | `409` | `ONBOARDING_ALREADY_COMPLETED` | User has already completed onboarding. |\n\n### Domain Error JSON Format\n\nWhen a domain exception is thrown, the API returns a structured JSON response:\n\n```json\n{\n    \"error_code\": \"INSUFFICIENT_BALANCE\",\n    \"exception_type\": \"InsufficientBalanceException\",\n    \"message\": \"Your wallet does not have enough balance to complete this transaction.\"\n}\n```\n\n---\n\n## 4. Rate Limiting & Security Policies\n\nThe Marketplace API is built with high security standards. Every response includes strict security headers and global rate limits to protect both customer data and system integrity.\n\n### API Rate Limiting & Authentication\n\nThe API applies a strict rate limit of **60 requests per minute** per IP Address or Authenticated User ID.\nWhen the limit is reached, the API returns a `429 Too Many Requests` status code (`TOO_MANY_REQUESTS` global error code).\n\nResponse headers included on every request to track your limit:\n- `X-RateLimit-Limit`: Maximum requests allowed per minute (60)\n- `X-RateLimit-Remaining`: Number of requests remaining in the current period\n- `Retry-After`: (On a 429 response) Seconds to wait before making another request\n\n#### Security & Authentication Schemes\n\n- **http** (Type: `http`): Protected endpoints require this authentication scheme.\n\n### HTTP Security Headers\n\n| Header | Value | Purpose |\n|---|---|---|\n| `X-Content-Type-Options` | `nosniff` | Prevent browsers from misinterpreting the content type (MIME-sniffing) |\n| `X-Frame-Options` | `DENY` | Prevent clickjacking by blocking the API from being embedded in an iframe |\n| `X-XSS-Protection` | `1; mode=block` | Enable strict cross-site scripting (XSS) filtering |\n| `Referrer-Policy` | `no-referrer` | Ensure no referrer information is leaked to third parties |\n| `Content-Security-Policy` | `default-src 'none'; script-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';` | Advanced Content Security Policy for API (block all active content, framing, and explicitly prevent SVG/XSS script execution) |\n| `Cache-Control` | `no-store, max-age=0, must-revalidate` | Dynamic Cache-Control to prevent caching of sensitive data (Web Deception Protection) |\n\n### CORS Configuration\n\nThe Marketplace API implements Cross-Origin Resource Sharing (CORS) policies to control which external domains are allowed to access resources.\n\nThe current CORS configuration is dynamically parsed below:\n\n| CORS Directive | Configured Value | Description |\n|---|---|---|\n| `Allowed Paths` | `api/*, sanctum/csrf-cookie` | Paths for which cross-origin requests are enabled. |\n| `Allowed Origins` | `*` | Allowed origins (domains) that can access the API. |\n| `Allowed Methods` | `*` | HTTP methods permitted when accessing the resource. |\n| `Allowed Headers` | `*` | HTTP headers that can be used during the actual request. |\n| `Supports Credentials` | `false` | Indicates whether the request can be made using credentials (cookies, HTTP auth). |\n| `Max Age` | `0` | Seconds the results of a preflight request can be cached. |\n\n### JWT Security Mechanisms\n\nJSON Web Tokens (JWTs) are a secure way to authenticate users in stateless environments. Here's how the security is maintained:\n\n- **Token Expiration**: JWT tokens have an expiration time (expiry). After a token expires, it's no longer valid for authentication. This ensures that if a token is intercepted, it can only be used for a limited time.\n\n- **Token Refresh**: When an access token expires, the user can use the refresh token to obtain a new access token without having to re-enter their credentials. The refresh token is typically long-lived and is used to generate new access tokens.\n\n- **Token Blacklisting**: While expired tokens can't be used for authentication, they can be blacklisted to ensure that even if an attacker gets hold of a valid token, it won't work after being blacklisted. Laravel has a built-in blacklist mechanism for this purpose.\n\n- **Statelessness**: JWTs are self-contained and do not require server-side storage. This makes JWT-based authentication suitable for scalable and distributed systems.\n\n### Handling Expired Tokens and Refreshing\n\nWhen an access token expires, the user can use the refresh token to request a new access token. This is done by making a request to the `/api/auth/refresh` endpoint, providing the expired token in the authorization header. The API then responds with a new access token, extending the user's session.\n\n### Blacklisting Tokens\n\nIf a token is compromised or a user logs out, their tokens can be blacklisted. Blacklisting means that even if an expired token is used for refresh, the new access token won't be generated. Laravel's built-in mechanism takes care of blacklisting tokens to enhance security.\n\n"
+    },
+    "servers": [
+        {
+            "url": "http://localhost/api"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Authentication"
+        },
+        {
+            "name": "User/Profile"
+        },
+        {
+            "name": "Admin/Users"
+        }
+    ],
+    "security": [
+        {
+            "http": []
+        }
+    ],
+    "paths": {
+        "/auth/authenticate": {
+            "post": {
+                "operationId": "auth.authenticate",
+                "description": "Authenticate a user using social oauth provider and token.",
+                "summary": "Authenticate user via social provider",
+                "tags": [
+                    "Authentication"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Requests.AuthenticateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": {
+                                            "$ref": "#/components/schemas/Resources.UserResource"
+                                        },
+                                        "authorization": {
+                                            "type": "object",
+                                            "properties": {
+                                                "access_token": {
+                                                    "type": "object"
+                                                },
+                                                "token_type": {
+                                                    "type": "string",
+                                                    "const": "bearer"
+                                                },
+                                                "expires_in": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "access_token",
+                                                "token_type",
+                                                "expires_in"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "user",
+                                        "authorization"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "OAuth authentication token validation failed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The domain-specific error code.",
+                                            "example": "OAUTH_FAILED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "OauthException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "OAuth authentication failed. Please check your credentials and try again."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Attempting to login or perform actions with a deactivated account.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The domain-specific error code.",
+                                            "example": "ACCOUNT_DEACTIVATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AccountDeactivatedException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "Your account has been deactivated. Please contact support."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The specific error code identifying a validation failure.",
+                                            "example": "VALIDATION_ERROR"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Errors overview message.",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "A detailed description of each field that failed validation.",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "example": "The field is required."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "operationId": "auth.logout",
+                "description": "Revoke the user's current JWT access token and log them out of the application.",
+                "summary": "Logout user",
+                "tags": [
+                    "Authentication"
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "operationId": "auth.refresh",
+                "description": "Refresh the user's current authentication token, invalidating the old one and returning a new JWT.",
+                "summary": "Refresh token",
+                "tags": [
+                    "Authentication"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": {
+                                            "$ref": "#/components/schemas/Resources.UserResource"
+                                        },
+                                        "authorization": {
+                                            "type": "object",
+                                            "properties": {
+                                                "access_token": {
+                                                    "type": "string"
+                                                },
+                                                "token_type": {
+                                                    "type": "string"
+                                                },
+                                                "expires_in": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "access_token",
+                                                "token_type",
+                                                "expires_in"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "user",
+                                        "authorization"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register": {
+            "post": {
+                "operationId": "auth.register",
+                "description": "Complete onboarding for the currently authenticated user by adding username, home place, and safety preferences.",
+                "summary": "Register / Complete Onboarding",
+                "tags": [
+                    "Authentication"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Requests.RegisterOnboardingRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": {
+                                            "$ref": "#/components/schemas/Resources.UserResource"
+                                        },
+                                        "authorization": {
+                                            "type": "object",
+                                            "properties": {
+                                                "access_token": {
+                                                    "type": "object"
+                                                },
+                                                "token_type": {
+                                                    "type": "string",
+                                                    "const": "bearer"
+                                                },
+                                                "expires_in": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "access_token",
+                                                "token_type",
+                                                "expires_in"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "user",
+                                        "authorization"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "User has already completed onboarding.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The domain-specific error code.",
+                                            "example": "ONBOARDING_ALREADY_COMPLETED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "OnboardingCompletedException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "Onboarding is already completed."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "A generic fallback for unhandled domain errors.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The domain-specific error code.",
+                                            "example": "INTERNAL_ERROR"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "ServerErrorException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "Sorry, something went wrong on the server. Please try again later."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The specific error code identifying a validation failure.",
+                                            "example": "VALIDATION_ERROR"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Errors overview message.",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "A detailed description of each field that failed validation.",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "example": "The field is required."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Attempting to access a route or perform an action without the required user role or permissions.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "FORBIDDEN"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthorizationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You do not have permission to perform this action."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/user/avatar": {
+            "patch": {
+                "operationId": "profile.updateAvatar",
+                "description": "Upload an avatar file to update the profile.",
+                "summary": "Update avatar",
+                "tags": [
+                    "User/Profile"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Requests.UpdateAvatarRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Avatar updated successfully."
+                                        },
+                                        "avatar_url": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "avatar_url"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "No avatar file was provided."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The specific error code identifying a validation failure.",
+                                            "example": "VALIDATION_ERROR"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Errors overview message.",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "A detailed description of each field that failed validation.",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "example": "The field is required."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Attempting to access a route or perform an action without the required user role or permissions.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "FORBIDDEN"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthorizationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You do not have permission to perform this action."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/user/me": {
+            "get": {
+                "operationId": "profile.me",
+                "description": "Retrieve the authenticated user's profile details.",
+                "summary": "Get profile",
+                "tags": [
+                    "User/Profile"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`UserResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": {
+                                            "$ref": "#/components/schemas/Resources.UserResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "user"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/user/profile": {
+            "put": {
+                "operationId": "profile.update",
+                "description": "Update the authenticated user's profile information (name and email).",
+                "summary": "Update profile",
+                "tags": [
+                    "User/Profile"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Requests.UpdateProfileRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`UserResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": {
+                                            "$ref": "#/components/schemas/Resources.UserResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "user"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Attempting to access a route or perform an action without the required user role or permissions.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "FORBIDDEN"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthorizationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You do not have permission to perform this action."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The specific error code identifying a validation failure.",
+                                            "example": "VALIDATION_ERROR"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Errors overview message.",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "A detailed description of each field that failed validation.",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "example": "The field is required."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/user/settings": {
+            "patch": {
+                "operationId": "profile.updateSettings",
+                "description": "Update user-specific settings such as location sharing, nearby, etc.",
+                "summary": "Update settings",
+                "tags": [
+                    "User/Profile"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Requests.UpdateSettingsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Settings updated successfully."
+                                        },
+                                        "settings": {
+                                            "type": "array",
+                                            "items": []
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "settings"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The specific error code identifying a validation failure.",
+                                            "example": "VALIDATION_ERROR"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Errors overview message.",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "A detailed description of each field that failed validation.",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "example": "The field is required."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Attempting to access a route or perform an action without the required user role or permissions.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "FORBIDDEN"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthorizationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You do not have permission to perform this action."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/user/username": {
+            "get": {
+                "operationId": "profile.checkUsername",
+                "description": "Check if a username is valid and available (not taken by another user).",
+                "summary": "Check username availability",
+                "tags": [
+                    "User/Profile"
+                ],
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "query",
+                        "required": true,
+                        "description": "The username to check for availability.",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9_]+$",
+                            "minLength": 3,
+                            "maxLength": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "available": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "available"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The specific error code identifying a validation failure.",
+                                            "example": "VALIDATION_ERROR"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Errors overview message.",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "A detailed description of each field that failed validation.",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "example": "The field is required."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Attempting to access a route or perform an action without the required user role or permissions.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "FORBIDDEN"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthorizationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You do not have permission to perform this action."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users": {
+            "get": {
+                "operationId": "user.index",
+                "description": "List all registered users with pagination.",
+                "summary": "List users",
+                "tags": [
+                    "Admin/Users"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `UserResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Resources.UserResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{user}": {
+            "get": {
+                "operationId": "user.show",
+                "description": "Retrieve detailed profile information of a specific user.",
+                "summary": "View user",
+                "tags": [
+                    "Admin/Users"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`UserResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": {
+                                            "$ref": "#/components/schemas/Resources.UserResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "user"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Requesting a database record or resource ID that does not exist.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "NOT_FOUND"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "ModelNotFoundException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "The requested resource was not found."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "user.destroy",
+                "description": "Permanently delete a user account from the system database.",
+                "summary": "Delete user",
+                "tags": [
+                    "Admin/Users"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "500": {
+                        "description": "An unexpected server error occurred during processing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "SERVER_ERROR"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "ServerErrorException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "Sorry, something went wrong on the server. Please try again later."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Requesting a database record or resource ID that does not exist.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "NOT_FOUND"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "ModelNotFoundException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "The requested resource was not found."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{user}/activate": {
+            "patch": {
+                "operationId": "user.activate",
+                "description": "Reactivate a deactivated user account, allowing them to login and access the platform.",
+                "summary": "Activate user",
+                "tags": [
+                    "Admin/Users"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "404": {
+                        "description": "Requesting a database record or resource ID that does not exist.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "NOT_FOUND"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "ModelNotFoundException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "The requested resource was not found."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{user}/deactivate": {
+            "patch": {
+                "operationId": "user.deactivate",
+                "description": "Deactivate a user account, revoking their active token and session immediately.",
+                "summary": "Deactivate user",
+                "tags": [
+                    "Admin/Users"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "404": {
+                        "description": "Requesting a database record or resource ID that does not exist.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "NOT_FOUND"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "ModelNotFoundException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "The requested resource was not found."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{user}/role": {
+            "patch": {
+                "operationId": "user.updateRole",
+                "description": "Assign a new system role (user, admin) to a user account.",
+                "summary": "Update user role",
+                "tags": [
+                    "Admin/Users"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Requests.UpdateRoleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "404": {
+                        "description": "Requesting a database record or resource ID that does not exist.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "NOT_FOUND"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "ModelNotFoundException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "The requested resource was not found."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Requesting protected routes without a valid JWT token, or token is expired/invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The global error code.",
+                                            "example": "UNAUTHENTICATED"
+                                        },
+                                        "exception_type": {
+                                            "type": "string",
+                                            "description": "The exception class name.",
+                                            "example": "AuthenticationException"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "A human-readable error message.",
+                                            "example": "You are not authenticated. Please provide a valid token."
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "exception_type",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error_code": {
+                                            "type": "string",
+                                            "description": "The specific error code identifying a validation failure.",
+                                            "example": "VALIDATION_ERROR"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Errors overview message.",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "description": "A detailed description of each field that failed validation.",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "example": "The field is required."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "error_code",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "http": {
+                "type": "http",
+                "scheme": "bearer"
+            }
+        },
+        "schemas": {
+            "Requests.AuthenticateRequest": {
+                "type": "object",
+                "properties": {
+                    "provider": {
+                        "type": "string",
+                        "enum": [
+                            "google",
+                            "facebook",
+                            "apple"
+                        ]
+                    },
+                    "token": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "provider",
+                    "token"
+                ],
+                "title": "AuthenticateRequest"
+            },
+            "Requests.RegisterOnboardingRequest": {
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9_]+$",
+                        "minLength": 3,
+                        "maxLength": 50
+                    },
+                    "home": {
+                        "type": "object",
+                        "properties": {
+                            "place_name": {
+                                "type": "string",
+                                "maxLength": 255
+                            },
+                            "address": {
+                                "type": "string",
+                                "maxLength": 1000
+                            },
+                            "lat": {
+                                "type": "number",
+                                "minimum": -90,
+                                "maximum": 90
+                            },
+                            "lng": {
+                                "type": "number",
+                                "minimum": -180,
+                                "maximum": 180
+                            },
+                            "radius": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ],
+                                "minimum": 10,
+                                "maximum": 1000
+                            }
+                        },
+                        "required": [
+                            "place_name",
+                            "address",
+                            "lat",
+                            "lng"
+                        ]
+                    },
+                    "safety_preference": {
+                        "type": "object",
+                        "properties": {
+                            "sound_recording": {
+                                "type": "boolean"
+                            },
+                            "silent_mode": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "sound_recording",
+                            "silent_mode"
+                        ]
+                    }
+                },
+                "required": [
+                    "username",
+                    "home",
+                    "safety_preference"
+                ],
+                "title": "RegisterOnboardingRequest"
+            },
+            "Requests.UpdateAvatarRequest": {
+                "type": "object",
+                "properties": {
+                    "avatar": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "The avatar image file to upload.",
+                        "maxLength": 2048
+                    }
+                },
+                "required": [
+                    "avatar"
+                ],
+                "title": "UpdateAvatarRequest"
+            },
+            "Requests.UpdateProfileRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Updated full name of the user.",
+                        "maxLength": 255
+                    },
+                    "username": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Updated username. Must be unique.",
+                        "pattern": "^[a-z0-9_]+$",
+                        "minLength": 3,
+                        "maxLength": 50
+                    },
+                    "phone_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Phone number attributes.",
+                        "maxLength": 30
+                    },
+                    "phone_iso_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 10
+                    },
+                    "phone_dial_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 10
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "title": "UpdateProfileRequest"
+            },
+            "Requests.UpdateRoleRequest": {
+                "type": "object",
+                "properties": {
+                    "role": {
+                        "type": "string",
+                        "description": "The new role to assign to the user.",
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "example": "admin"
+                    }
+                },
+                "required": [
+                    "role"
+                ],
+                "title": "UpdateRoleRequest"
+            },
+            "Requests.UpdateSettingsRequest": {
+                "type": "object",
+                "properties": {
+                    "location_sharing": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "nearby": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "sound_recording": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "silent_mode": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    }
+                },
+                "title": "UpdateSettingsRequest"
+            },
+            "Resources.UserResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "email_verified_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "avatar": {
+                        "type": "string"
+                    },
+                    "google_id": {
+                        "type": "string"
+                    },
+                    "facebook_id": {
+                        "type": "string"
+                    },
+                    "is_onboarding_completed": {
+                        "type": "string"
+                    },
+                    "phone_number": {
+                        "type": "string"
+                    },
+                    "phone_iso_code": {
+                        "type": "string"
+                    },
+                    "phone_dial_code": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "username",
+                    "avatar",
+                    "is_onboarding_completed",
+                    "phone_number",
+                    "phone_iso_code",
+                    "phone_dial_code",
+                    "role",
+                    "is_active",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "UserResource"
+            }
+        }
+    }
+}

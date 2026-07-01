@@ -1,0 +1,64 @@
+services:
+  app:
+    dns:
+      - 8.8.8.8
+    build:
+      context: .
+      dockerfile: docker/php-fpm/Dockerfile
+    image: app:latest
+    container_name: app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./src:/var/www/html
+      - ./docs:/var/www/html/docs
+      - ./docker/php-fpm/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    networks:
+      - app_network
+
+  web:
+    image: nginx:stable-alpine
+    container_name: web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./src:/var/www/html:ro
+      - ./docs:/var/www/html/docs:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - app
+    networks:
+      - app_network
+
+  db:
+    image: mysql:8.0
+    container_name: db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: rootsecret
+    volumes:
+      - dbdata:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - app_network
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+
+volumes:
+  dbdata:
+
+networks:
+  app_network:
+    driver: bridge
