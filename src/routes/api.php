@@ -17,12 +17,12 @@ use Illuminate\Support\Facades\Route;
 
 // ── Public routes (no auth) ────────────────────────────────────────────────
 Route::post('/auth/authenticate', [AuthController::class, 'authenticate']);
-// Route::post('/auth/login',        [AuthController::class, 'login']);
+Route::post('/auth/login',        [AuthController::class, 'login']);
+Route::post('/auth/register',     [AuthController::class, 'register']);
 
 // ── Authenticated routes (any role) ────────────────────────────────────────
 Route::middleware(['auth:api', 'active'])->group(function () {
 
-    Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/auth/refresh', [AuthController::class, 'refresh']);
 

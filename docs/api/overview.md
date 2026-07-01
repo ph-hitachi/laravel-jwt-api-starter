@@ -9,9 +9,10 @@ Welcome to the Laravel JWT API Starter API documentation.
 | Method | Endpoint | Success Status | Description |
 |---|---|---|---|
 | POST | `/api/auth/authenticate` | `200 OK` | Authenticate a user using social oauth provider and token. |
+| POST | `/api/auth/login` | `200 OK` | Authenticate a user using their email and password credentials to receive a stateless JWT access token. |
 | POST | `/api/auth/logout` | `204 No Content` | Revoke the user's current JWT access token and log them out of the application. |
 | POST | `/api/auth/refresh` | `200 OK` | Refresh the user's current authentication token, invalidating the old one and returning a new JWT. |
-| POST | `/api/auth/register` | `200 OK` | Complete onboarding for the currently authenticated user by adding username, home place, and safety preferences. |
+| POST | `/api/auth/register` | `200 OK` | Create a new user account with email and password credentials, and return a stateless JWT access token. |
 
 ### User/Profile
 

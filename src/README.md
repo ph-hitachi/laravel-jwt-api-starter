@@ -22,10 +22,11 @@ This boilerplate is designed with performance, security, and developer experienc
 
 | Method | Endpoint | Description |
 |:---|:---|:---|
-| `POST` | `/api/auth/authenticate` | Authenticate a user using social OAuth provider and token. |
+| `POST` | `/api/auth/authenticate` | Authenticate a user using social OAuth provider and token (SSO). |
+| `POST` | `/api/auth/login` | Authenticate a user using email and password credentials. |
+| `POST` | `/api/auth/register` | Create a new user account with email and password credentials. |
 | `POST` | `/api/auth/logout` | Revoke the user's current JWT access token and log them out. |
 | `POST` | `/api/auth/refresh` | Refresh the current authentication token. |
-| `POST` | `/api/auth/register` | Complete onboarding for the currently authenticated user. |
 
 ### User/Profile
 

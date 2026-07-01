@@ -98,62 +98,27 @@ class AuthController extends Controller
     }
 
     /**
-     * Register / Complete Onboarding.
+     * Register user.
      *
-     * Complete onboarding for the currently authenticated user by adding username, home place, and safety preferences.
+     * Create a new user account with email and password credentials, and return a stateless JWT access token.
+     *
+     * @param RegisterRequest $request
+     * @response array{user: UserResource, authorization: array{access_token: string, token_type: string, expires_in: int}}
      */
-    public function register(RegisterOnboardingRequest $request): JsonResponse
+    public function register(RegisterRequest $request): JsonResponse
     {
-        /** @var User $user */
-        $user = Auth::guard('api')->user();
+        $user = User::create([
+            'name' => $request->validated('name'),
+            'email' => $request->validated('email'),
+            'password' => $request->validated('password'),
+            'is_active' => true,
+        ]);
 
-        if ($user->is_onboarding_completed) {
-            throw new OnboardingCompletedException();
-        }
+        /** @var \PHPOpenSourceSaver\JWTAuth\JWTGuard $guard */
+        $guard = Auth::guard('api');
+        $token = $guard->login($user);
 
-        DB::beginTransaction();
-
-        try {
-            $user->update([
-                'username' => $request->input('username'),
-                'is_onboarding_completed' => true,
-            ]);
-
-            // Save Home Place
-            $home = $request->input('home');
-            $user->places()->create([
-                'name' => $home['place_name'],
-                'address' => $home['address'],
-                'latitude' => $home['lat'],
-                'longitude' => $home['lng'],
-                'radius' => $home['radius'] ?? 150,
-                'icon' => 'house',
-                'geofence_type' => 'circle',
-            ]);
-
-            // Save Safety Preferences
-            $safety = $request->input('safety_preference');
-            $user->settings()->updateOrCreate(
-                ['key' => 'sound_recording'],
-                ['value' => json_encode($safety['sound_recording'])]
-            );
-            $user->settings()->updateOrCreate(
-                ['key' => 'silent_mode'],
-                ['value' => json_encode($safety['silent_mode'])]
-            );
-
-            DB::commit();
-
-            /** @var \PHPOpenSourceSaver\JWTAuth\JWTGuard $guard */
-            $guard = Auth::guard('api');
-            $token = $guard->login($user);
-
-            return $this->respondWithToken($token, $user->fresh());
-
-        } catch (Exception $e) {
-            DB::rollBack();
-            throw new ServerErrorException('Failed to complete onboarding. Please try again later.');
-        }
+        return $this->respondWithToken($token, $user);
     }
 
     /**
