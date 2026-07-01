@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
     working_dir: /var/www/html
     env_file:
-      - ./src/.env.docker.example
+      - .env.docker
     volumes:
       - ./src:/var/www/html
       - ./docs:/var/www/html/docs
@@ -37,11 +37,8 @@ services:
     image: mysql:8.0
     container_name: db
     restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: laravel
-      MYSQL_USER: laravel
-      MYSQL_PASSWORD: secret
-      MYSQL_ROOT_PASSWORD: rootsecret
+    env_file:
+      - .env.docker
     volumes:
       - dbdata:/var/lib/mysql
     ports:
